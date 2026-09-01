@@ -33,7 +33,23 @@ Al revisar el repo completo contra `trabajo-final.md`, el 2026-09-01 se encontr�
 | `ANALISIS_ECONOMICO.md` | Cubre el ítem 5 de la rúbrica (costo por corrida, proyección semanal/anual, elección de modelo justificada), inexistente hasta esta revisión. |
 | `GOBIERNO.md` | Cubre el ítem 6 de la rúbrica (sistemas y permisos, qué puede salir mal y respuesta, checklist de revisión del SE, quién firma, niveles L0–L4 por fase), que antes vivía disperso e implícito en "Limitaciones conocidas". |
 
-`ANALISIS_ECONOMICO.md` queda con los números de costo marcados como pendientes: este entorno de trabajo no tiene una `ANTHROPIC_API_KEY` configurada, así que no se pueden generar cifras reales de tokens todavía. Se decidió dejarlo explícitamente pendiente en vez de estimar o inventar tokens — el mismo criterio que ya rige para los precios de BoM en las Restricciones del `system_prompt.md`. Falta correr `scripts/run_agent.py` con una API key real contra los 3 casos (y contra `claude-haiku-4-5` además de `claude-sonnet-5`, para la comparación de modelo) antes de la entrega del 13/9.
+`ANALISIS_ECONOMICO.md` quedó inicialmente con los números de costo marcados como pendientes (no había `ANTHROPIC_API_KEY` en el entorno). El 2026-09-01 se corrió `scripts/run_agent.py` con una API key real contra los 3 casos, con `claude-sonnet-5` y `claude-haiku-4-5`, y se completó el análisis con datos reales de `corridas/raw/`.
+
+### Iteración operativa al correr el runner por primera vez (2026-09-01)
+
+Correr el sistema de verdad, y no solo describirlo, encontró tres problemas reales que no habían aparecido en las 3 corridas manuales (hechas por copy-paste, sin API):
+
+1. **Bug de `max_tokens` demasiado bajo:** con `max_tokens=4096` (el valor inicial del script), Sonnet 5 —que piensa por defecto (`thinking: adaptive`)— gastó casi todo el presupuesto en razonamiento interno y devolvió casi nada de texto visible en 2 de los 3 casos (las corridas de SYNNEX y BMINING quedaron con apenas la cabecera). Se subió el default a `max_tokens=16000` y se agregó un flag `--max-tokens` para ajustarlo por caso.
+2. **Error del SDK al pedir mucho `max_tokens` sin streaming:** al subir `max_tokens` más allá de cierto punto para el caso BMINING (el más largo), el SDK de Anthropic rechazó la llamada no-streaming con `ValueError: Streaming is required for operations that may take longer than 10 minutes`. Se cambió `client.messages.create(...)` por `client.messages.stream(...).get_final_message()`, que no tiene ese límite.
+3. **Autenticación con key "identity-linked":** la key usada requería además el header `anthropic-workspace-id` (error `400 anthropic-workspace-id is required...`). Se agregó soporte a una variable de entorno opcional `ANTHROPIC_WORKSPACE_ID` que el script manda como `default_headers` si está presente.
+
+Con esos tres fixes, las 6 corridas (3 casos × 2 modelos) completaron sin truncarse. Los archivos quedan en `corridas/raw/`.
+
+### Hallazgo de la comparación de modelo (Haiku 4.5 vs. Sonnet 5)
+
+Con las 6 corridas reales se pudo hacer la comparación de modelo que pedía `ANALISIS_ECONOMICO.md` (antes solo planeada, no ejecutada). Resultado no trivial: **Haiku 4.5 no sostiene el contrato en el caso más exigente (BMINING)** — se detiene después de la Fase 2 en vez de completar las 6 fases con supuestos declarados como pide el `system_prompt.md`, y ya desde el caso más simple (ACME) reemplaza la plantilla fija de "Formato de salida" por su propia organización (encabezados `# Fase 1`/`# Fase 2`, tablas propias) en vez de las secciones exactas del contrato. Sonnet 5 respeta el formato letra por letra en los 3 casos y completa el flujo. Por eso se elige `claude-sonnet-5` como modelo del sistema pese a costar ~2.5-3× más por token que Haiku — el criterio "el más chico que hace bien la tarea" se aplicó de forma literal: Haiku es el más chico, pero no hace bien la tarea bajo este contrato. Detalle completo en `ANALISIS_ECONOMICO.md`.
+
+De paso, estas corridas reales validaron algo agregado en esta misma revisión: en el caso BMINING, Sonnet 5 usó espontáneamente el vocabulario de la sección `# Supervisión y niveles de autonomía` agregada al `system_prompt.md` ("Nota de gobernanza: esta fase requiere revisión y aprobación explícita del SE...") en las fases marcadas como L3, sin que se le haya pedido literalmente esa frase — confirma que quedó bien integrado al contrato y no es una sección aislada que el modelo ignora.
 
 ## Cambios aplicados a `prompts/user_prompt.md`
 

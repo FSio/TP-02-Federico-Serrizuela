@@ -14,10 +14,13 @@ Uso:
     python scripts/run_agent.py prompts/casos/solicitud_002_synnex.md --model claude-haiku-4-5
 
 Requiere la librería `anthropic` (ver scripts/requirements.txt) y la variable de entorno
-ANTHROPIC_API_KEY (o credenciales equivalentes resueltas por el SDK).
+ANTHROPIC_API_KEY (o credenciales equivalentes resueltas por el SDK). Si la key es
+"identity-linked" (asociada a un usuario que pertenece a varios workspaces), también hace
+falta ANTHROPIC_WORKSPACE_ID con el ID del workspace donde debe correr cada request.
 """
 import argparse
 import datetime
+import os
 import pathlib
 
 import anthropic
@@ -33,17 +36,28 @@ PRICING_USD_PER_MTOK = {
 }
 
 
-def run(input_file: pathlib.Path, model: str) -> pathlib.Path:
+def run(input_file: pathlib.Path, model: str, max_tokens: int = 16000) -> pathlib.Path:
     system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
     user_input = input_file.read_text(encoding="utf-8")
 
-    client = anthropic.Anthropic()
-    response = client.messages.create(
+    workspace_id = os.environ.get("ANTHROPIC_WORKSPACE_ID")
+    default_headers = {"anthropic-workspace-id": workspace_id} if workspace_id else None
+    client = anthropic.Anthropic(default_headers=default_headers)
+    # Streaming evita el error del SDK "Streaming is required for operations that may
+    # take longer than 10 minutes" cuando max_tokens es alto (ver corridas/raw, caso BMINING).
+    with client.messages.stream(
         model=model,
-        max_tokens=4096,
+        max_tokens=max_tokens,
         system=system_prompt,
         messages=[{"role": "user", "content": user_input}],
-    )
+    ) as stream:
+        response = stream.get_final_message()
+
+    if response.stop_reason == "max_tokens":
+        print(
+            f"AVISO: la respuesta se truncó por max_tokens={max_tokens}. "
+            "Reintentá con --max-tokens más alto."
+        )
 
     output_text = "".join(
         block.text for block in response.content if block.type == "text"
@@ -89,8 +103,9 @@ def main() -> None:
     parser.add_argument(
         "--model", default="claude-sonnet-5", choices=sorted(PRICING_USD_PER_MTOK)
     )
+    parser.add_argument("--max-tokens", type=int, default=16000)
     args = parser.parse_args()
-    run(args.input_file, args.model)
+    run(args.input_file, args.model, args.max_tokens)
 
 
 if __name__ == "__main__":
