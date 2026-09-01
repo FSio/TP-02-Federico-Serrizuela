@@ -20,6 +20,20 @@ Las corridas se ejecutaron en ese orden y cada una parte del `system_prompt.md` 
 | 6 | Excepción a la restricción de proveedor: no aplica cuando el dato de plataforma/equipamiento lo aporta el propio cliente | Corrida 03, iteración 3 | El cliente (BMINING) especificó su propia plataforma (C-4615) como requisito, no como algo a recomendar; la restricción original hacía que el agente evitara nombrarla con rodeos artificiales. |
 | 7 | Restricción de no inventar precios de BoM; usar "Pendiente de cotización con Producto/Pricing" cuando no hay datos reales de costo | Corrida 03, iteración 3 | Ante el pedido explícito de un BoM con precios, el agente completó la tabla con precios inventados de apariencia plausible — el único caso de alucinación de datos detectado en las 3 corridas. |
 | 8 | Instrucción en Fase 3 + subsección `## Interconexión con red(es) existente(s) del cliente` en el Formato de salida | Corrida 03, iteración 4 | El cliente pidió explícitamente alternativas para interconectar la nueva red con su infraestructura existente; sin un lugar propio en el formato, ese pedido terminaba mezclado como una viñeta suelta dentro de otra opción de solución. |
+| 9 | Sección `# Supervisión y niveles de autonomía` (vocabulario L0–L4 del curso, mapeado a las 6 fases) | Revisión de cierre contra `trabajo-final.md` (2026-09-01) | La supervisión humana existía solo como prosa genérica en el README ("revisión humana obligatoria"), no como parte del contrato mismo ni con el vocabulario L0–L4 que exige el ítem 1 de la rúbrica del trabajo final. |
+
+## Cambios estructurales al repositorio (fuera de los prompts)
+
+Al revisar el repo completo contra `trabajo-final.md`, el 2026-09-01 se encontró que dos dimensiones enteras de la rúbrica (Análisis económico y Gobierno y riesgo, 30% combinado) no tenían ningún artefacto, y que el sistema no cumplía el requisito de "al menos una herramienta o conector real" — las 3 corridas se habían hecho copiando y pegando manualmente entre un chat y los archivos de `corridas/`, no vía una llamada real a la API. Se aplicaron estos cambios:
+
+| Cambio | Motivo |
+| --- | --- |
+| Rename `DESICIONES.md` → `DECISIONES.md` | `trabajo-final.md` exige ese nombre exacto para la estructura obligatoria; el nombre original tenía un typo que un evaluador automático no habría podido resolver por su cuenta. |
+| `scripts/run_agent.py` (+ `prompts/casos/*.md`, `corridas/raw/`) | Resuelve el requisito de herramienta/conector real: lee un caso desde un archivo real y escribe el output completo (con tokens y costo reales de la API) a otro archivo real, en vez de depender de copy-paste manual. |
+| `ANALISIS_ECONOMICO.md` | Cubre el ítem 5 de la rúbrica (costo por corrida, proyección semanal/anual, elección de modelo justificada), inexistente hasta esta revisión. |
+| `GOBIERNO.md` | Cubre el ítem 6 de la rúbrica (sistemas y permisos, qué puede salir mal y respuesta, checklist de revisión del SE, quién firma, niveles L0–L4 por fase), que antes vivía disperso e implícito en "Limitaciones conocidas". |
+
+`ANALISIS_ECONOMICO.md` queda con los números de costo marcados como pendientes: este entorno de trabajo no tiene una `ANTHROPIC_API_KEY` configurada, así que no se pueden generar cifras reales de tokens todavía. Se decidió dejarlo explícitamente pendiente en vez de estimar o inventar tokens — el mismo criterio que ya rige para los precios de BoM en las Restricciones del `system_prompt.md`. Falta correr `scripts/run_agent.py` con una API key real contra los 3 casos (y contra `claude-haiku-4-5` además de `claude-sonnet-5`, para la comparación de modelo) antes de la entrega del 13/9.
 
 ## Cambios aplicados a `prompts/user_prompt.md`
 

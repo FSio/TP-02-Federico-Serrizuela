@@ -12,11 +12,14 @@ El repositorio incluye:
 - `prompts/system_prompt.md` — el agente en sí (rol, contexto, las 6 fases, restricciones, criterios de escalación y formato de salida fijo).
 - `prompts/user_prompt.md` — 3 solicitudes de clientes ficticios (ACME, SYNNEX, BMINING) usadas como casos de prueba.
 - `corridas/` — 3 corridas documentadas, cada una corriendo el agente contra uno de los 3 casos, iterando al menos 3 veces sobre errores reales encontrados y aplicando la mejora correspondiente al `system_prompt.md`.
-- `DESICIONES.md` — consolidado de todos los cambios aplicados a los archivos de prompt, con el motivo de cada uno, los cambios de alcance, lo que se descartó y las limitaciones del agente.
+- `DECISIONES.md` — consolidado de todos los cambios aplicados a los archivos de prompt, con el motivo de cada uno, los cambios de alcance, lo que se descartó y las limitaciones del agente.
+- `scripts/run_agent.py` — el conector/herramienta real: corre el agente vía la API de Anthropic contra un caso de `prompts/casos/` y guarda el output completo en `corridas/raw/`, con los tokens y el costo reales de esa corrida.
+- `ANALISIS_ECONOMICO.md` — costo por corrida, proyección semanal/anual y justificación de la elección de modelo.
+- `GOBIERNO.md` — sistemas que toca el agente y con qué permisos, qué puede salir mal y qué pasa cuando sale mal, qué revisa el SE antes de confiar en la salida, quién firma, y los niveles de autonomía (L0–L4) por fase.
 
 ## Cómo se lo pedí
 
-Se partió del `system_prompt.md` original (un asistente de SE con 6 fases fijas y un formato de salida estructurado) y de 3 solicitudes de cliente con distinto nivel de completitud y distintos tipos de ambigüedad a propósito. Se corrió el agente contra cada solicitud, se revisó la salida buscando errores reales (no solo estéticos: supuestos disfrazados de hechos, preguntas de descubrimiento genéricas que deberían ser específicas, restricciones mal aplicadas, datos inventados, pedidos del cliente sin lugar en el formato de salida), y por cada error encontrado se aplicó un cambio concreto al `system_prompt.md`, se volvió a correr, y se verificó si el error se resolvía. El detalle iteración por iteración está en `corridas/`; el resumen de qué cambió y por qué está en `DESICIONES.md`.
+Se partió del `system_prompt.md` original (un asistente de SE con 6 fases fijas y un formato de salida estructurado) y de 3 solicitudes de cliente con distinto nivel de completitud y distintos tipos de ambigüedad a propósito. Se corrió el agente contra cada solicitud, se revisó la salida buscando errores reales (no solo estéticos: supuestos disfrazados de hechos, preguntas de descubrimiento genéricas que deberían ser específicas, restricciones mal aplicadas, datos inventados, pedidos del cliente sin lugar en el formato de salida), y por cada error encontrado se aplicó un cambio concreto al `system_prompt.md`, se volvió a correr, y se verificó si el error se resolvía. El detalle iteración por iteración está en `corridas/`; el resumen de qué cambió y por qué está en `DECISIONES.md`.
 
 No se usó un template externo para este README más allá de la convención ya usada en el TP grupal anterior del equipo (`../TP-Parcial---Navarro-Peron-Pires-Serrizuela/README.md`), ya que no se encontró ningún archivo `Base.md` en el repositorio ni en la carpeta de la materia.
 
@@ -34,8 +37,20 @@ El agente ejecuta solo las fases que la información disponible permite, e indic
 
 ## Cómo correrlo
 
+**Opción real (recomendada) — vía el runner:**
+
+```bash
+pip install -r scripts/requirements.txt
+export ANTHROPIC_API_KEY=sk-ant-...
+python scripts/run_agent.py prompts/casos/solicitud_001_acme.md
+```
+
+El output completo, con los tokens y el costo reales de esa corrida, queda guardado en `corridas/raw/`.
+
+**Opción manual (para explorar rápido sin la API):**
+
 1. Usar el contenido de `prompts/system_prompt.md` como system prompt de un modelo de lenguaje.
-2. Pasarle como mensaje de usuario la información real de un cliente (se puede usar cualquiera de las 3 solicitudes de `prompts/user_prompt.md` como ejemplo).
+2. Pasarle como mensaje de usuario la información real de un cliente (se puede usar cualquiera de las 3 solicitudes de `prompts/user_prompt.md` o `prompts/casos/` como ejemplo).
 3. Revisar la salida con el formato fijo que define el propio `system_prompt.md` (Resumen de la oportunidad, Inconsistencias detectadas, Requisitos del cliente, Clasificación de la información, Información faltante, Preguntas de aclaración, Alternativas de solución, etc.).
 
 ## Qué funciona
@@ -48,14 +63,13 @@ El agente ejecuta solo las fases que la información disponible permite, e indic
 
 ## Qué falta o qué falló — limitaciones del agente
 
-- **No procesa diagramas ni archivos reales:** aunque el `Contexto` del system prompt menciona "diagramas de red" como posible input, el agente solo puede razonar sobre texto; un diagrama tiene que transcribirse a información textual para que el agente lo use.
-- **No tiene acceso a datos reales** de disponibilidad de fibra, catálogo de producto, precios vigentes ni inventario de red del cliente — cualquier BoM o alternativa de interconexión que arma es estructural, no verificada contra un sistema real (por eso los precios se marcan siempre como "Pendiente de cotización con Producto/Pricing" en vez de inventarse, tras el hallazgo de la Corrida 03).
-- **No hace cálculos de ingeniería reales** (presupuesto de potencia óptica, dispersión cromática, etc.); los deja marcados como supuestos de diseño a validar por ingeniería, deliberadamente, en vez de automatizarlos (ver "Qué se descartó" en `DESICIONES.md`).
-- **No es determinístico:** al ser un LLM, dos corridas con el mismo input pueden variar levemente en redacción aunque respeten el mismo formato de salida.
-- **Solo detecta inconsistencias explícitas dentro del propio texto recibido**, no contradicciones contra el historial real del cliente en un CRM u otro sistema externo.
-- **No reemplaza el criterio del Sales Engineer:** toda salida requiere revisión humana antes de convertirse en una nota de ingeniería, propuesta o cotización real enviada a un cliente.
+- **No procesa diagramas ni archivos reales:** un diagrama tiene que transcribirse a texto para que el agente lo use.
+- **No tiene acceso a datos reales** de fibra, producto, precios ni inventario de red del cliente — todo BoM se marca "Pendiente de cotización con Producto/Pricing" en vez de inventarse.
+- **No hace cálculos de ingeniería reales** (potencia óptica, dispersión); los deja como supuestos de diseño a validar por ingeniería.
+- **No es determinístico**, y **solo detecta inconsistencias explícitas** dentro del propio texto recibido, no contra un CRM externo.
+- **No reemplaza el criterio del Sales Engineer:** toda salida requiere revisión humana — ver los niveles de autonomía por fase en [`GOBIERNO.md`](GOBIERNO.md).
 
-El detalle completo de estas limitaciones, junto con los cambios de alcance aplicados y lo que se descartó a propósito, está en [`DESICIONES.md`](DESICIONES.md).
+El detalle completo de estas limitaciones, junto con los cambios de alcance aplicados y lo que se descartó a propósito, está en [`DECISIONES.md`](DECISIONES.md).
 
 ## Qué aprendí
 
