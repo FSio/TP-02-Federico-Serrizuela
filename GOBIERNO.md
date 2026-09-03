@@ -1,4 +1,4 @@
-# Gobierno y riesgo — TP 02
+# Gobierno y riesgo — TP Final
 
 Este archivo responde, para el agente asistente de SE descripto en [`prompts/system_prompt.md`](prompts/system_prompt.md), qué sistemas toca, qué puede salir mal, qué revisa un humano antes de confiar en la salida, y quién firma el resultado.
 

@@ -1,4 +1,4 @@
-# TP 02 — Agente Asistente para Ingenieros de Ventas en Redes Ópticas
+# TP Final — Agente Asistente para Ingenieros de Ventas en Redes Ópticas
 
 Trabajo práctico de la materia "Creación de Agentes de IA" — MADE N-2T, UCEMA, 2026 2T.
 

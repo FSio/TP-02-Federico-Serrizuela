@@ -1,4 +1,4 @@
-# Decisiones — TP 02
+# Decisiones — TP Final
 
 Este archivo consolida los cambios aplicados a `prompts/system_prompt.md` y `prompts/user_prompt.md` durante las 3 corridas documentadas en `corridas/`, con el motivo de cada uno. El detalle iteración por iteración, con las salidas del agente y los errores encontrados, está en cada archivo de corrida:
 
